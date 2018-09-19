@@ -1,0 +1,280 @@
+-- MySQL Workbench Forward Engineering
+
+SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0;
+SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0;
+SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='TRADITIONAL,ALLOW_INVALID_DATES';
+
+-- -----------------------------------------------------
+-- Schema Production
+-- -----------------------------------------------------
+
+-- -----------------------------------------------------
+-- Schema Production
+-- -----------------------------------------------------
+CREATE SCHEMA IF NOT EXISTS `Production` DEFAULT CHARACTER SET utf8 ;
+USE `Production` ;
+
+-- -----------------------------------------------------
+-- Table `Production`.`employees`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `Production`.`employees` (
+  `employeeID` INT NOT NULL AUTO_INCREMENT,
+  `firstName` VARCHAR(25) NOT NULL,
+  `lastName` VARCHAR(25) NOT NULL,
+  `password` VARCHAR(45) NOT NULL,
+  PRIMARY KEY (`employeeID`))
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `Production`.`machines`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `Production`.`machines` (
+  `machineID` INT NOT NULL AUTO_INCREMENT,
+  `machineName` VARCHAR(20) NOT NULL,
+  PRIMARY KEY (`machineID`),
+  UNIQUE INDEX `machineName_UNIQUE` (`machineName` ASC))
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `Production`.`blades`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `Production`.`blades` (
+  `bladeID` INT NOT NULL AUTO_INCREMENT,
+  `bladeSize` DECIMAL(4,3) NOT NULL,
+  `numTeeth` INT NOT NULL,
+  `manufacturer` VARCHAR(45) NULL,
+  PRIMARY KEY (`bladeID`),
+  UNIQUE INDEX `bladeSize_UNIQUE` (`bladeSize` ASC))
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `Production`.`departments`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `Production`.`departments` (
+  `departmentID` INT NOT NULL AUTO_INCREMENT,
+  `departmentType` VARCHAR(10) NOT NULL,
+  PRIMARY KEY (`departmentID`),
+  UNIQUE INDEX `departmentType_UNIQUE` (`departmentType` ASC))
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `Production`.`job_title`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `Production`.`job_title` (
+  `titleID` INT NOT NULL AUTO_INCREMENT,
+  `employees_employeeID` INT NOT NULL,
+  `departments_departmentID` INT NOT NULL,
+  PRIMARY KEY (`titleID`),
+  INDEX `fk_job_title_employees_idx` (`employees_employeeID` ASC),
+  INDEX `fk_job_title_departments1_idx` (`departments_departmentID` ASC),
+  UNIQUE INDEX `assignment` (`employees_employeeID` ASC, `departments_departmentID` ASC),
+  CONSTRAINT `fk_job_title_employees`
+    FOREIGN KEY (`employees_employeeID`)
+    REFERENCES `Production`.`employees` (`employeeID`)
+    ON DELETE RESTRICT
+    ON UPDATE RESTRICT,
+  CONSTRAINT `fk_job_title_departments1`
+    FOREIGN KEY (`departments_departmentID`)
+    REFERENCES `Production`.`departments` (`departmentID`)
+    ON DELETE RESTRICT
+    ON UPDATE RESTRICT)
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `Production`.`customers`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `Production`.`customers` (
+  `customerID` INT NOT NULL AUTO_INCREMENT,
+  `customerName` VARCHAR(45) NOT NULL,
+  PRIMARY KEY (`customerID`))
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `Production`.`materials`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `Production`.`materials` (
+  `materialID` INT NOT NULL AUTO_INCREMENT,
+  `size` DECIMAL(5,3) NOT NULL,
+  `weight` DECIMAL(5,2) NOT NULL,
+  `grade` VARCHAR(10) NOT NULL,
+  `thread` VARCHAR(10) NOT NULL,
+  `mill` VARCHAR(10) NOT NULL,
+  `description` VARCHAR(45) NOT NULL,
+  PRIMARY KEY (`materialID`))
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `Production`.`perf_patterns`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `Production`.`perf_patterns` (
+  `patternID` INT NOT NULL AUTO_INCREMENT,
+  `rows` INT UNSIGNED NOT NULL,
+  `depth` DECIMAL(3,2) UNSIGNED NOT NULL,
+  `center` INT UNSIGNED NOT NULL,
+  `bladeSize` DECIMAL(3,3) UNSIGNED NOT NULL,
+  `timeToComplete` TIME NULL,
+  `description` VARCHAR(45) GENERATED ALWAYS AS (CONCAT(rows, 'R-', depth, '-', center, '-', bladeSize)) VIRTUAL,
+  PRIMARY KEY (`patternID`))
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `Production`.`perf_production`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `Production`.`perf_production` (
+  `perfProductionID` INT NOT NULL AUTO_INCREMENT,
+  `titleID` INT NOT NULL,
+  `orderNum` VARCHAR(45) NOT NULL,
+  `customerID` INT NOT NULL,
+  `materialID` INT NOT NULL,
+  `patternID` INT NOT NULL,
+  `machineID` INT NOT NULL,
+  `jobStart` DATETIME NOT NULL,
+  `jobEnd` DATETIME NOT NULL,
+  `notes` TEXT NULL,
+  PRIMARY KEY (`perfProductionID`),
+  INDEX `fk_production_job_title1_idx` (`titleID` ASC),
+  INDEX `fk_production_machines1_idx` (`machineID` ASC),
+  INDEX `fk_production_customers1_idx` (`customerID` ASC),
+  INDEX `fk_production_materials1_idx` (`materialID` ASC),
+  INDEX `fk_production_perf_patterns1_idx` (`patternID` ASC),
+  CONSTRAINT `fk_production_job_title1`
+    FOREIGN KEY (`titleID`)
+    REFERENCES `Production`.`job_title` (`titleID`)
+    ON DELETE RESTRICT
+    ON UPDATE RESTRICT,
+  CONSTRAINT `fk_production_machines1`
+    FOREIGN KEY (`machineID`)
+    REFERENCES `Production`.`machines` (`machineID`)
+    ON DELETE RESTRICT
+    ON UPDATE CASCADE,
+  CONSTRAINT `fk_production_customers1`
+    FOREIGN KEY (`customerID`)
+    REFERENCES `Production`.`customers` (`customerID`)
+    ON DELETE RESTRICT
+    ON UPDATE CASCADE,
+  CONSTRAINT `fk_production_materials1`
+    FOREIGN KEY (`materialID`)
+    REFERENCES `Production`.`materials` (`materialID`)
+    ON DELETE RESTRICT
+    ON UPDATE CASCADE,
+  CONSTRAINT `fk_production_perf_patterns1`
+    FOREIGN KEY (`patternID`)
+    REFERENCES `Production`.`perf_patterns` (`patternID`)
+    ON DELETE RESTRICT
+    ON UPDATE CASCADE)
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `Production`.`assign_orders`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `Production`.`assign_orders` (
+  `machineID` INT NOT NULL,
+  `orderNum` VARCHAR(45) NOT NULL,
+  PRIMARY KEY (`machineID`, `orderNum`),
+  CONSTRAINT `fk_work_orders_machines1`
+    FOREIGN KEY (`machineID`)
+    REFERENCES `Production`.`machines` (`machineID`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION)
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `Production`.`perf_production_line`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `Production`.`perf_production_line` (
+  `perfProdLineID` INT NOT NULL AUTO_INCREMENT,
+  `perfProductionID` INT NOT NULL,
+  `perfStart` DATETIME NOT NULL,
+  `perfEnd` DATETIME NOT NULL,
+  `secondsPerCut` INT NOT NULL,
+  `RPM` INT NOT NULL,
+  `numBladeChanges` INT NULL,
+  `jointNotes` TEXT NULL,
+  PRIMARY KEY (`perfProdLineID`),
+  INDEX `fk_production_line_production1_idx` (`perfProductionID` ASC),
+  CONSTRAINT `fk_production_line_production1`
+    FOREIGN KEY (`perfProductionID`)
+    REFERENCES `Production`.`perf_production` (`perfProductionID`)
+    ON DELETE RESTRICT
+    ON UPDATE CASCADE)
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `Production`.`assigned_blades`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `Production`.`assigned_blades` (
+  `assignedBladeID` INT NOT NULL AUTO_INCREMENT,
+  `bladeID` INT NOT NULL,
+  `titleID` INT NOT NULL,
+  `setCountOut` INT NOT NULL,
+  `setCountIn` INT NOT NULL,
+  `operatorCount` INT NOT NULL,
+  PRIMARY KEY (`assignedBladeID`),
+  INDEX `fk_assigned_blades_blades1_idx` (`bladeID` ASC),
+  INDEX `fk_assigned_blades_job_title1_idx` (`titleID` ASC),
+  CONSTRAINT `fk_assigned_blades_blades1`
+    FOREIGN KEY (`bladeID`)
+    REFERENCES `Production`.`blades` (`bladeID`)
+    ON DELETE RESTRICT
+    ON UPDATE RESTRICT,
+  CONSTRAINT `fk_assigned_blades_job_title1`
+    FOREIGN KEY (`titleID`)
+    REFERENCES `Production`.`job_title` (`titleID`)
+    ON DELETE RESTRICT
+    ON UPDATE CASCADE)
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `Production`.`down_time`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `Production`.`down_time` (
+  `downTimeID` INT NOT NULL AUTO_INCREMENT,
+  `perfProdLineID` INT NOT NULL,
+  `downStart` DATETIME NOT NULL,
+  `downEnd` DATETIME NOT NULL,
+  `notes` TEXT NOT NULL,
+  PRIMARY KEY (`downTimeID`),
+  INDEX `fk_down_time_production_line1_idx` (`perfProdLineID` ASC),
+  CONSTRAINT `fk_down_time_production_line1`
+    FOREIGN KEY (`perfProdLineID`)
+    REFERENCES `Production`.`perf_production_line` (`perfProdLineID`)
+    ON DELETE RESTRICT
+    ON UPDATE CASCADE)
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `Production`.`drops`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `Production`.`drops` (
+  `dropID` INT NOT NULL AUTO_INCREMENT,
+  `dropStart` DATETIME NOT NULL,
+  `dropEnd` DATETIME NOT NULL,
+  `numSpindles` INT NOT NULL,
+  `totalDrop` DECIMAL(2,1) NOT NULL,
+  `perfProdLineID` INT NOT NULL,
+  PRIMARY KEY (`dropID`),
+  INDEX `fk_drops_production_line1_idx` (`perfProdLineID` ASC),
+  CONSTRAINT `fk_drops_production_line1`
+    FOREIGN KEY (`perfProdLineID`)
+    REFERENCES `Production`.`perf_production_line` (`perfProdLineID`)
+    ON DELETE RESTRICT
+    ON UPDATE CASCADE)
+ENGINE = InnoDB;
+
+
+SET SQL_MODE=@OLD_SQL_MODE;
+SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;
+SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;
